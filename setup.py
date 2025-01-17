@@ -6,7 +6,7 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="code_flowchart",                # PyPI에 올릴 패키지명
-    version="0.1.0",                      # 버전
+    version="{{VERSION_PLACEHOLDER}}",                      # 버전
     description="A simple tool for creating flowcharts of code",
     long_description=long_description,
     long_description_content_type="text/markdown",

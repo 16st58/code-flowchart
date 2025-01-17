@@ -71,25 +71,30 @@ class CodeFlowchartGenerator:
 
     def _is_major_statement(self, stmt: ast.stmt):
         """
-        '주요 구문' 여부 판별.
+        '주요 구문' 여부 판별:
         - if, for, while, function def, return
-        - 사용자 정의 함수 호출
+        - (중첩을 포함하여) 사용자 정의 함수 호출이 있는지 검사
         """
+        # 1) if / for / while / function def / return 등은 바로 True
         if isinstance(stmt, (ast.If, ast.For, ast.While, ast.FunctionDef, ast.Return)):
             return True
 
-        if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
-            func_name = None
-            try:
-                func_name = ast.unparse(stmt.value.func)
-            except Exception:
-                pass
+        # 2) stmt 내부(자식 노드 전부)를 순회하여 ast.Call 탐색
+        for node in ast.walk(stmt):
+            if isinstance(node, ast.Call):
+                # 어떤 함수가 호출됐는지 이름을 추출
+                try:
+                    func_name = ast.unparse(node.func)
+                except Exception:
+                    func_name = None
 
-            # 사용자 정의 함수명인지 확인
-            if func_name and func_name in self.function_definitions:
-                return True
+                # 사용자 정의 함수 목록에 있는 이름인지 판별
+                if func_name and func_name in self.function_definitions:
+                    return True
 
+        # 3) 위 조건에 걸리지 않으면 False
         return False
+
 
     def _grouped_statements(self, stmts):
         """
@@ -132,6 +137,72 @@ class CodeFlowchartGenerator:
             current_node = self._process_node(group, current_node, cluster=cluster, return_points=return_points)
 
         return current_node
+    
+    def _process_function_call(self, call_node, current_node, cluster, edge_label=""):
+        """
+        call_node: ast.Call
+        현재 코드에서의 함수 호출을 처리하고,
+        만약 인자들 중에 또 다른 ast.Call(=중첩 함수 호출)이 있다면 재귀적으로 처리.
+        """
+        func_name = ast.unparse(call_node.func)
+        expr_content = ast.unparse(call_node)
+
+        # 1) 사용자 정의 함수?
+        if func_name in self.function_definitions:
+            # Call 노드 생성
+            expr_node = self._add_node(f"Call: {expr_content}", "box", cluster=cluster, prefix="call")
+            self._add_edge(current_node, expr_node, cluster=cluster, label=edge_label)
+
+            # 함수 클러스터에 함수 노드들 만들어주기
+            func_def = self.function_definitions[func_name]
+            if func_name not in self.function_flow_nodes:
+                # 아직 해당 함수에 대한 노드가 없다면 새로 생성
+                func_start_node = self._add_node(
+                    f"Function: {func_name}", "ellipse",
+                    cluster=self.function_cluster, prefix="function"
+                )
+                func_return_points = []
+                func_body_node = self._process_body(
+                    func_def.body, self.function_cluster,
+                    func_start_node, func_return_points
+                )
+                func_end_node = func_body_node
+                self.function_flow_nodes[func_name] = (func_start_node, func_end_node, func_return_points)
+            else:
+                func_start_node = self.function_flow_nodes[func_name][0]
+
+            # 메인 클러스터에서 함수 호출 노드 -> 함수 시작 노드(ellipse) 점선 연결
+            self._add_edge(expr_node, func_start_node, label="Call", cluster=self.main_cluster, style="dashed")
+
+            # 함수 내부 return 지점들 -> 호출 노드로 복귀
+            for return_node in self.function_flow_nodes[func_name][2]:
+                self._add_edge(return_node, expr_node, label="Return", style="dashed")
+
+            # 2) 인자들 중에 또 다른 함수 호출이 있는지 확인 (중첩)
+            for arg in call_node.args:
+                if isinstance(arg, ast.Call):
+                    # 재귀 호출
+                    self._process_function_call(arg, expr_node, cluster, edge_label="Arg Call")
+
+            return expr_node
+
+        else:
+            # 외부 함수 or 라이브러리 함수
+            expr_node = self._add_node(f"Expression: {expr_content}", "box", cluster=cluster, prefix="expr")
+            self._add_edge(current_node, expr_node, cluster=cluster, label=edge_label)
+
+            # 인자들 중 중첩 함수 호출 탐색
+            for arg in call_node.args:
+                if isinstance(arg, ast.Call):
+                    # 재귀로 처리
+                    self._process_function_call(arg, expr_node, cluster, edge_label="Arg Call")
+
+            # keyword args 처리
+            for kw in call_node.keywords:
+                if isinstance(kw.value, ast.Call):
+                    self._process_function_call(kw.value, expr_node, cluster, edge_label="Arg Call")
+
+            return expr_node
 
     def _process_node(self, node, current_node, cluster=None, return_points=None, edge_label=""):
         """
@@ -155,41 +226,7 @@ class CodeFlowchartGenerator:
         # 3) Expression(함수 호출/단순 표현식 등)
         elif isinstance(node, ast.Expr):
             if isinstance(node.value, ast.Call):
-                func_name = ast.unparse(node.value.func)
-                expr_content = ast.unparse(node.value)
-                if func_name in self.function_definitions:
-                    # 사용자 정의 함수 호출
-                    expr_node = self._add_node(f"Call: {expr_content}", "box", cluster=cluster, prefix="call")
-                    self._add_edge(current_node, expr_node, cluster=cluster, label=edge_label)
-
-                    func_def = self.function_definitions[func_name]
-                    if func_name in self.function_flow_nodes:
-                        func_start_node, func_end_node, _ = self.function_flow_nodes[func_name]
-                    else:
-                        func_start_node = self._add_node(f"Function: {func_name}", "ellipse",
-                                                         cluster=self.function_cluster, prefix="function")
-                        func_body_node = func_start_node
-                        func_return_points = []
-
-                        # 함수 본문 처리
-                        func_body_node = self._process_body(func_def.body, self.function_cluster, func_body_node, func_return_points)
-                        func_end_node = func_body_node
-
-                        self.function_flow_nodes[func_name] = (func_start_node, func_end_node, func_return_points)
-
-                    # 메인 클러스터에서 함수 호출 노드 -> 함수 시작 노드로 점선(edge) 연결
-                    self._add_edge(expr_node, func_start_node, label="Call", cluster=self.main_cluster, style="dashed")
-
-                    # 함수 내부 return 지점들 -> 호출 노드로 복귀 점선(edge)
-                    for return_node in self.function_flow_nodes[func_name][2]:
-                        self._add_edge(return_node, expr_node, label="Return", style="dashed")
-
-                    return expr_node
-                else:
-                    # 외부 함수 호출 혹은 라이브러리 함수 호출
-                    expr_node = self._add_node(f"Expression: {expr_content}", "box", cluster=cluster, prefix="expr")
-                    self._add_edge(current_node, expr_node, cluster=cluster, label=edge_label)
-                    return expr_node
+                return self._process_function_call(node.value, current_node, cluster)
             else:
                 # 단순 표현식
                 expr_content = ast.unparse(node.value)
@@ -317,3 +354,17 @@ class CodeFlowchartGenerator:
         # PNG 이미지 렌더
         self.graph.render(filename=output_file, format='png', cleanup=True)
         print(f"Flowchart saved as {output_file}.png")
+
+if __name__=="__main__":
+    sample_code = """
+def isOdd(num):
+    if num%2==0:
+        return "It's not odd!!!"
+    else:
+        return "It's odd!!!"
+
+for i in range(3):
+    print(isOdd(i))
+"""
+    generator = CodeFlowchartGenerator(sample_code)
+    generator.generate_flowchart("output")

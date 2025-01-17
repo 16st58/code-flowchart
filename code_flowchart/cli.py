@@ -10,7 +10,7 @@ def main():
     parser.add_argument("-o", "--output", default="code_flowchart", help="Output file name (without extension).")
     args = parser.parse_args()
 
-    # 입력 파일에서 코드를 읽음
+    # Read code from an input file
     try:
         with open(args.input_file, "r", encoding="utf-8") as f:
             code = f.read()
@@ -18,6 +18,6 @@ def main():
         print(f"Error: file '{args.input_file}' not found.", file=sys.stderr)
         sys.exit(1)
 
-    # 순서도 생성
+    # generate flowchart
     generator = CodeFlowchartGenerator(code)
     generator.generate_flowchart(args.output)

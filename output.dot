@@ -1,0 +1,37 @@
+digraph {
+	rankdir=TB
+	nodesep=0.5 ranksep=0.75
+	dpi=300 size="10,10"
+{rank=source; "start_1";}{rank=same; "for_2";}{rank=same; "expr_3";}{rank=same; "call_4";}{rank=same; "function_5";}{rank=same; "if_6";}{rank=same; "return_7";}{rank=same; "else_8";}{rank=same; "expr_9";}{rank=same; "if_end_10";}{rank=same; "return_11";}	return_7 -> call_4 [label=Return color=black fontsize=10 style=dashed]
+	return_11 -> call_4 [label=Return color=black fontsize=10 style=dashed]
+{rank=sink; "end_12";}	subgraph cluster_functions {
+		color=green fontsize=16 label=Functions style=dashed
+		function_5 [label="Function: isOdd" fontsize=12 shape=ellipse]
+		if_6 [label="If: not num % 2 == 0" fontsize=12 shape=diamond]
+		function_5 -> if_6 [label="" color=black fontsize=10 style=solid]
+		return_7 [label="Return: True" fontsize=12 shape=box]
+		if_6 -> return_7 [label=True color=black fontsize=10 style=solid]
+		else_8 [label=Else fontsize=12 shape=diamond]
+		if_6 -> else_8 [label=False color=black fontsize=10 style=solid]
+		expr_9 [label=Expression fontsize=12 shape=box]
+		else_8 -> expr_9 [label="" color=black fontsize=10 style=solid]
+		if_end_10 [label="If End" fontsize=12 shape=circle]
+		expr_9 -> if_end_10 [label="" color=black fontsize=10 style=solid]
+		return_11 [label="Return: False" fontsize=12 shape=box]
+		if_end_10 -> return_11 [label="" color=black fontsize=10 style=solid]
+	}
+	subgraph cluster_main {
+		color=blue fontsize=16 label="Main Code" style=dashed
+		start_1 [label=Start fontsize=12 shape=ellipse]
+		for_2 [label="For: i in range(3)" fontsize=12 shape=parallelogram]
+		start_1 -> for_2 [label="" color=black fontsize=10 style=solid]
+		expr_3 [label="Expression: print(isOdd(i))" fontsize=12 shape=box]
+		for_2 -> expr_3 [label="" color=black fontsize=10 style=solid]
+		call_4 [label="Call: isOdd(i)" fontsize=12 shape=box]
+		expr_3 -> call_4 [label="Arg Call" color=black fontsize=10 style=solid]
+		call_4 -> function_5 [label=Call color=black fontsize=10 style=dashed]
+		expr_3 -> for_2 [label=Repeat color=black fontsize=10 style=dotted]
+		end_12 [label=End fontsize=12 shape=ellipse]
+		for_2 -> end_12 [label="" color=black fontsize=10 style=solid]
+	}
+}

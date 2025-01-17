@@ -1,10 +1,15 @@
 # setup.py
 from setuptools import setup, find_packages
 
+with open("README.md", encoding="utf-8") as f:
+    long_description = f.read()
+
 setup(
     name="code_flowchart",                # PyPI에 올릴 패키지명
     version="0.1.0",                      # 버전
     description="A simple tool for creating flowcharts of code",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     author="16st58",
     author_email="kithree1010@gmail.com",
     url="https://github.com/16st58/code-flowchart",

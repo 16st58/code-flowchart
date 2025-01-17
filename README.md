@@ -1,6 +1,8 @@
 <h1 align="center">code-flowchart</h1>
-<img alt="GitHub Tag" src="https://img.shields.io/github/v/tag/16st58/code-flowchart"> <img alt="PyPI - Version" src="https://img.shields.io/pypi/v/code-flowchart"> <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/code_flowchart"> <img alt="GitHub License" src="https://img.shields.io/github/license/16st58/code_flowchart">
-
+![GitHub Tag](https://img.shields.io/github/v/tag/16st58/code-flowchart)
+![PyPI - Version](https://img.shields.io/pypi/v/code-flowchart)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/code_flowchart)
+![GitHub License](https://img.shields.io/github/license/16st58/code_flowchart)
 
 **code-flowchart** is a simple tool for generating flowcharts (in both DOT and PNG formats) directly from your Python source code. It leverages Python's built-in AST (Abstract Syntax Tree) parsing and utilizes Graphviz to render visual diagrams.
 
@@ -92,6 +94,7 @@ digraph {
 **output.png**
 
 Below is a preview of the generated flowchart (the actual image may vary based on the code and your Graphviz configuration):
+
 <img src="output.png" width="200"/>
 
 ## Supported syntax

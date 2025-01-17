@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     permissions:
-      id-token: write
+      contents: write
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
@@ -26,13 +26,11 @@ jobs:
 
       - name: Extract tag name
         id: tag
-        run: echo ::set-output name=TAG_NAME::${GITHUB_REF#refs/tags/}
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
       - name: Update version in setup.py
         run: |
-          VERSION=${{ steps.tag.outputs.TAG_NAME }}
-          VERSION=${VERSION#v}
-          sed -i "s/{{VERSION_PLACEHOLDER}}/$VERSION/g" setup.py
+          sed -i "s/{{VERSION_PLACEHOLDER}}/${{ env.TAG_NAME }}/g" setup.py
 
       - name: Build and publish
         run: |
@@ -40,3 +38,5 @@ jobs:
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
